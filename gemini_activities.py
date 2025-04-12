@@ -27,7 +27,7 @@ class GeminiActivitiesImpl(GeminiActivities):
 
     def __init__(self):
         # Configure Gemini Client (Ensure GEMINI_API_KEY is set in environment)
-        api_key = "AIzaSyCjL31Uwy_DI3jDMw5d4T7KEMeLggW4HEU"
+        api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable not set.")
         
