@@ -109,6 +109,16 @@ This application is ready to deploy to Google Cloud Run with minimal configurati
   - `/workflows`: Temporal workflow definitions
   - `/web`: Web UI components (templates and static files)
   - `/uploads`: Temporary storage for uploaded files
+  - `run_worker.py`: Worker process implementation
+- `/scripts`: Utility scripts
+  - `list_gemini_models.py`: Script to list available Gemini models
+  - `start_workflow.py`: Script to manually start a workflow
+- `/data`: Data files (gitignored)
+- `/docs`: Documentation and example files
+  - `fishinglicence.png`: Sample image for testing
+  - `result_screenshot.png`: Screenshot of the application
+- `/deploy`: Deployment configuration
+- `/dynamicconfig`: Temporal server configuration
 - `app.py`: Application entry point
 - `Dockerfile`: Container configuration for deployment
 - `docker-compose.yml`: Local development environment setup
