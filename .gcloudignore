@@ -1,0 +1,25 @@
+# .gcloudignore file
+.git
+.github
+.gitignore
+.gcloudignore
+.env
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+*.so
+.hypothesis/
+.env
+env/
+dynamicconfig/
+temporal.db
+app/uploads/*
+!app/uploads/.gitkeep 

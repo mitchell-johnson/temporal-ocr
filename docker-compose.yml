@@ -1,0 +1,75 @@
+version: '3'
+
+services:
+  # Temporal server
+  temporal:
+    container_name: temporal
+    image: temporalio/auto-setup:1.22.0
+    ports:
+      - 7233:7233
+      - 8233:8233
+    environment:
+      - CASSANDRA_SEEDS=cassandra
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
+    depends_on:
+      - cassandra
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+  
+  # Temporal Web UI
+  temporal-web:
+    container_name: temporal-web
+    image: temporalio/ui:2.23.0
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - 8088:8080
+    depends_on:
+      - temporal
+  
+  # Cassandra
+  cassandra:
+    container_name: cassandra
+    image: cassandra:3.11
+    ports:
+      - 9042:9042
+    environment:
+      - CASSANDRA_LISTEN_ADDRESS=127.0.0.1
+      - CASSANDRA_CLUSTER_NAME=temporal
+
+  # Web application
+  webapp:
+    container_name: webapp
+    build: .
+    ports:
+      - 8000:8080
+    environment:
+      - FLASK_SECRET_KEY=dev-secret-key
+      - TEMPORAL_HOST=temporal:7233
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-demo_api_key}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-demo_api_key}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-https://example.openai.azure.com}
+      - AZURE_OPENAI_MODEL_NAME=${AZURE_OPENAI_MODEL_NAME:-gpt-4}
+    volumes:
+      - ./app:/app/app
+      - ./app/uploads:/app/app/uploads
+    depends_on:
+      - temporal
+
+  # Worker
+  worker:
+    container_name: worker
+    build: .
+    command: python -m app.run_worker
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-demo_api_key}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-demo_api_key}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-https://example.openai.azure.com}
+      - AZURE_OPENAI_MODEL_NAME=${AZURE_OPENAI_MODEL_NAME:-gpt-4}
+    volumes:
+      - ./app:/app/app
+      - ./app/uploads:/app/app/uploads
+    depends_on:
+      - temporal 

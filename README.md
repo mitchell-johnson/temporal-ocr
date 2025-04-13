@@ -1,23 +1,25 @@
-# Temporal OCR Document Processing
+# Temporal OCR Web Service
 
-This project demonstrates a document processing workflow using Temporal and AI services (Gemini or Azure OpenAI) to perform OCR and text summarization on images.
+This project provides a web-based document processing service that uses Temporal and AI services (Google Gemini or Azure OpenAI) to perform OCR and text summarization on images and PDFs.
 
 ## Features
 
+- **Web UI**: Upload documents through a user-friendly interface
 - **OCR Processing**: Extract text from images using either Google's Gemini or Azure OpenAI
 - **Text Summarization**: Generate concise summaries and keywords from extracted text
 - **Temporal Workflow**: Reliable, fault-tolerant processing with automatic retries
-- **Multi-Provider Support**: Switch between Gemini and Azure OpenAI with a simple flag
+- **Multi-Provider Support**: Switch between Gemini and Azure OpenAI with a checkbox
+- **Docker Support**: Easy deployment with Docker Compose or to Google Cloud Run
 
 ## Prerequisites
 
 - Python 3.9+
-- Docker and Docker Compose
+- Docker and Docker Compose for local development
 - API keys for either:
   - Google Gemini API
   - Azure OpenAI (with vision capabilities)
 
-## Setup
+## Local Development Setup
 
 1. **Clone the repository**:
    ```bash
@@ -25,94 +27,91 @@ This project demonstrates a document processing workflow using Temporal and AI s
    cd temporal-ocr
    ```
 
-2. **Create and activate a virtual environment**:
+2. **Configure environment variables**:
+   Create a `.env` file in the project root with your API credentials:
+
+   ```
+   GEMINI_API_KEY=your_gemini_api_key
+   AZURE_OPENAI_API_KEY=your_azure_api_key
+   AZURE_OPENAI_ENDPOINT=your_azure_endpoint
+   AZURE_OPENAI_MODEL_NAME=your_model_name
+   FLASK_SECRET_KEY=your_secret_key
+   ```
+
+3. **Start the services with Docker Compose**:
+   ```bash
+   docker-compose up
+   ```
+
+   This will start:
+   - Temporal server and UI
+   - The web application
+   - The worker process
+   - Supporting services (Cassandra)
+
+4. **Access the application**:
+   - Web UI: http://localhost:8000
+   - Temporal UI: http://localhost:8080
+
+## Manual Setup (Without Docker)
+
+1. **Create and activate a virtual environment**:
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**:
+2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Configure environment variables**:
-   Create a `.env` file in the project root with your API credentials:
+3. **Start Temporal Server**:
+   Follow the [Temporal documentation](https://docs.temporal.io/clusters/quick-install/) to install and start the Temporal server.
 
-   For Gemini:
-   ```
-   GEMINI_API_KEY=your_gemini_api_key
-   ```
-
-   For Azure OpenAI:
-   ```
-   AZURE_OPENAI_API_KEY=your_azure_api_key
-   AZURE_OPENAI_ENDPOINT=your_azure_endpoint
-   AZURE_OPENAI_MODEL_NAME=your_deployment_name
-   ```
-
-5. **Start Temporal Server**:
-   First, download the Temporal server Docker Compose file:
+4. **Start the Worker**:
    ```bash
-   curl -L https://temporal.io/docker-compose.yml -o docker-compose.yml
+   python -m app.run_worker
    ```
 
-   Then start the server:
+5. **Start the Web Application**:
    ```bash
-   docker compose up -d
+   python app.py
    ```
 
-   This will start the Temporal server in development mode with:
-   - Web UI at http://localhost:8233
-   - gRPC endpoint at localhost:7233
-   - PostgreSQL for persistence
-   - Elasticsearch for visibility (optional)
+## Deployment to Google Cloud Run
 
-   You can verify the server is running with:
+This application is ready to deploy to Google Cloud Run with minimal configuration.
+
+1. **Build and push the Docker image**:
    ```bash
-   docker compose ps
+   gcloud builds submit --tag gcr.io/[YOUR_PROJECT_ID]/temporal-ocr
    ```
 
-   To stop the server:
+2. **Deploy to Cloud Run**:
    ```bash
-   docker compose down
-   ```
-## Usage
-
-1. **Start the Worker**:
-   In one terminal, run:
-   ```bash
-   python run_worker.py
+   gcloud run deploy temporal-ocr \
+     --image gcr.io/[YOUR_PROJECT_ID]/temporal-ocr \
+     --platform managed \
+     --region [REGION] \
+     --allow-unauthenticated \
+     --set-env-vars="TEMPORAL_HOST=your-temporal-host,GEMINI_API_KEY=your-key,FLASK_SECRET_KEY=your-key"
    ```
 
-2. **Process a Document**:
-   In another terminal, run:
-   ```bash
-   python start_workflow.py --azure  # Use Azure OpenAI
-   # or
-   python start_workflow.py  # Use Gemini (default)
-   ```
-
-   The workflow will:
-   - Extract text from the image using OCR
-   - Generate a summary and keywords
-   - Return the results
+3. **Note on Temporal**: For production use, you'll need to set up a Temporal server or use Temporal Cloud.
 
 ## Project Structure
 
-- `workflows.py`: Defines the Temporal workflow
-- `gemini_activities.py`: Implementation of Gemini-based activities
-- `azure_activities.py`: Implementation of Azure OpenAI-based activities
-- `shared.py`: Shared data models and interfaces
-- `run_worker.py`: Worker process that executes workflows and activities
-- `start_workflow.py`: Client that starts the workflow
-
-## Troubleshooting
-
-- Ensure the Temporal server is running (`docker compose ps`)
-- Check your API keys are correctly set in `.env`
-- Verify the worker is connected to the correct task queue
-- Check logs for specific error messages
+- `/app`: Main application package
+  - `/api`: Web API and Flask application
+  - `/activities`: Implementation of OCR and summarization activities
+  - `/models`: Shared data models and interfaces
+  - `/workflows`: Temporal workflow definitions
+  - `/web`: Web UI components (templates and static files)
+  - `/uploads`: Temporary storage for uploaded files
+- `app.py`: Application entry point
+- `Dockerfile`: Container configuration for deployment
+- `docker-compose.yml`: Local development environment setup
 
 ## License
 
