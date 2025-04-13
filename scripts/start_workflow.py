@@ -40,9 +40,8 @@ async def main(use_azure: bool = False):
     result = await handle.result()
 
     print("\n--- Workflow Result ---")
-    print(f"OCR Text Length: {len(result.ocr_text)}")
-    # Limit printing very long OCR text
-    print(f"OCR Text (first 500 chars): {result.ocr_text[:500]}...")
+    # Print the full OCR text without truncation
+    print(f"OCR Text: {result.ocr_text}")
     print("\nSummary JSON:")
     import json
     print(json.dumps(result.summary, indent=2))

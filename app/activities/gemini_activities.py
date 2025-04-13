@@ -166,7 +166,7 @@ class GeminiActivitiesImpl(GeminiActivities):
                 # Use the raw response as fallback summary if no JSON found
                 return SummarizationActivityResult(
                     summary_json={
-                        "summary": raw_response_content[:500],
+                        "summary": raw_response_content,
                         "keywords": []
                     }
                  )
@@ -200,7 +200,7 @@ class GeminiActivitiesImpl(GeminiActivities):
                 # Fallback for unparseable response
                 return SummarizationActivityResult(
                     summary_json={
-                        "summary": raw_response_content[:500],  # Use raw content as fallback summary
+                        "summary": raw_response_content,  # Use raw content as fallback summary
                         "keywords": []
                     }
                 )
@@ -209,7 +209,7 @@ class GeminiActivitiesImpl(GeminiActivities):
                  # Fallback for invalid structure
                  return SummarizationActivityResult(
                      summary_json={
-                        "summary": str(summary_json) if 'summary_json' in locals() else raw_response_content[:500],
+                        "summary": str(summary_json) if 'summary_json' in locals() else raw_response_content,
                         "keywords": []
                      }
                  )
