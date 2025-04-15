@@ -38,7 +38,7 @@ async def start_document_workflow(file_path, use_azure=False) -> WorkflowResult:
     # Start the workflow execution
     handle = await client.start_workflow(
         DocumentProcessingWorkflow.run,
-        args=[doc_input, use_azure],  # Pass arguments as a list
+        args=[doc_input, use_azure],  # Always use Document Intelligence 
         id=workflow_id,
         task_queue=TASK_QUEUE, # Must match the worker's task queue
     )
