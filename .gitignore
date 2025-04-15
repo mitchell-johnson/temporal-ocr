@@ -141,4 +141,16 @@ pyflow.lock
 .sublime-project
 
 # VSCode
-.vscode/ 
+.vscode/
+
+# Project specific
+samples/
+samples/*.pdf
+samples/*.jpg
+samples/*.png
+samples/*.jpeg
+app/uploads/*
+!app/uploads/.gitkeep
+test.pdf
+
+# Exclude samples/test.pdf and the entire samples folder with test files 
