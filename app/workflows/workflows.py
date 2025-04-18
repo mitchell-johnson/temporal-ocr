@@ -4,72 +4,73 @@ from temporalio.common import RetryPolicy
 from datetime import timedelta
 
 # Import shared objects and activity interfaces
-from app.models.shared import DocumentInput, WorkflowResult, GeminiActivities, AzureOpenAIActivities, DocumentIntelligenceActivities, OcrActivityResult
+from app.models.shared import (
+    DocumentInput, 
+    WorkflowResult, 
+    GeminiDocumentResult,
+    AzureValidationResult,
+    GeminiActivities, 
+    AzureOpenAIActivities
+)
 
 with workflow.unsafe.imports_passed_through():
-    # Import implementations
+    # Import implementations - only for type hinting, not for direct use
     from app.activities.gemini_activities import GeminiActivitiesImpl
     from app.activities.azure_activities import AzureOpenAIActivitiesImpl
-    from app.activities.document_intelligence_activities import DocumentIntelligenceActivitiesImpl
 
 @workflow.defn
 class DocumentProcessingWorkflow:
     @workflow.run
-    async def run(self, doc_input: DocumentInput, use_azure: bool = False) -> WorkflowResult:
-        workflow.logger.info(f"Starting workflow for document: {doc_input.file_path} using {'Azure OpenAI' if use_azure else 'Gemini'}")
+    async def run(self, doc_input: DocumentInput) -> WorkflowResult:
+        workflow.logger.info(f"Starting workflow for document: {doc_input.file_path}")
         
         # Configure retries for activities
-        doc_intelligence_retry_policy = RetryPolicy(
+        activity_retry_policy = RetryPolicy(
             maximum_attempts=3,
-            initial_interval=timedelta(seconds=5),
+            initial_interval=timedelta(seconds=10),
             maximum_interval=timedelta(seconds=30),
             non_retryable_error_types=["FileNotFoundError", "ValueError"],
         )
-        
-        summary_retry_policy = RetryPolicy(
-            maximum_attempts=3,
-            initial_interval=timedelta(seconds=15),
-            maximum_interval=timedelta(minutes=2),
-            non_retryable_error_types=["ValueError"],
+
+        # Step 1: Gemini - Generate markdown and summary
+        workflow.logger.info("Starting Gemini processing to generate markdown and summary")
+        gemini_result = await self._execute_gemini_processing(
+            doc_input, 
+            activity_retry_policy
         )
-
-        # Choose which activity interface to use for LLM processing
-        activity_interface = AzureOpenAIActivities if use_azure else GeminiActivities
-
-        # Step 1: Document Intelligence OCR
-        workflow.logger.info("Starting Document Intelligence processing")
-        doc_intelligence_result = await workflow.execute_activity(
-            DocumentIntelligenceActivitiesImpl.process_document,
+        workflow.logger.info(f"Gemini processing completed. Generated markdown with {len(gemini_result.markdown_content)} characters and summary with {len(gemini_result.summary)} characters")
+        
+        # Step 2: Azure - Validate the summary
+        workflow.logger.info("Starting Azure validation of the summary")
+        validation_result = await self._execute_azure_validation(
+            doc_input,
+            gemini_result.summary,
+            activity_retry_policy
+        )
+        workflow.logger.info(f"Azure validation completed. Summary is {'accurate' if validation_result.is_accurate else 'not accurate'} with {len(validation_result.suggested_improvements)} improvement suggestions")
+        
+        # Step 3: Return combined result
+        workflow.logger.info("Workflow finished successfully")
+        return WorkflowResult(
+            markdown_content=gemini_result.markdown_content,
+            summary=gemini_result.summary,
+            validation_result=validation_result
+        )
+        
+    async def _execute_gemini_processing(self, doc_input: DocumentInput, retry_policy: RetryPolicy) -> GeminiDocumentResult:
+        """Helper method to execute Gemini processing activity"""
+        return await workflow.execute_activity(
+            GeminiActivities.generate_markdown_and_summary,
             doc_input,
             start_to_close_timeout=timedelta(minutes=5),
-            retry_policy=doc_intelligence_retry_policy,
+            retry_policy=retry_policy,
         )
-        workflow.logger.info(f"Document Intelligence completed with confidence: {doc_intelligence_result.confidence:.2f}")
-        
-        # Create an OCR result from Document Intelligence result to pass to the LLM
-        ocr_result = OcrActivityResult(full_text=doc_intelligence_result.full_text)
-        
-        # Add metadata about the document to the text if there are tables or entities
-        if doc_intelligence_result.tables or doc_intelligence_result.entities:
-            workflow.logger.info(f"Document has {len(doc_intelligence_result.tables)} tables and {len(doc_intelligence_result.entities)} entities")
-            
-            # Optional: We could enrich the OCR text with structured metadata from Document Intelligence
-            # This would help the LLM better understand the document structure
-        
-        workflow.logger.info("OCR step completed.")
-
-        # Step 2: Execute Summarization Activity with the OCR result
-        summarization_result = await workflow.execute_activity_method(
-            activity_interface.perform_azure_summarization if use_azure else activity_interface.perform_summarization,
-            ocr_result,
-            start_to_close_timeout=timedelta(minutes=3),
-            retry_policy=summary_retry_policy,
-        )
-        workflow.logger.info("Summarization Activity completed.")
-
-        # Step 3: Return Combined Result
-        workflow.logger.info("Workflow finished successfully.")
-        return WorkflowResult(
-            ocr_text=ocr_result.full_text,
-            summary=summarization_result.summary_json
+    
+    async def _execute_azure_validation(self, doc_input: DocumentInput, summary: str, retry_policy: RetryPolicy) -> AzureValidationResult:
+        """Helper method to execute Azure validation activity"""
+        return await workflow.execute_activity(
+            AzureOpenAIActivities.validate_summary,
+            args=[doc_input, summary],
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=retry_policy,
         )

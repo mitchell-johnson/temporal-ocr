@@ -83,6 +83,7 @@ def process_file():
         flash('No file uploaded', 'error')
         return redirect(url_for('index'))
     
+    # use_azure param is no longer needed but we'll keep it in session for future use
     use_azure = session.get('use_azure', False)
     
     # Call the async function to start the workflow
@@ -91,16 +92,21 @@ def process_file():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
-        # Run the async workflow
-        result = loop.run_until_complete(start_document_workflow(file_path, use_azure))
+        # Run the async workflow - only pass the file_path
+        result = loop.run_until_complete(start_document_workflow(file_path))
         
         # Close the loop
         loop.close()
         
         # Store result in session
         session['result'] = {
-            'ocr_text': result.ocr_text[:5000],  # Truncate for session storage
+            'markdown_content': result.markdown_content,
             'summary': result.summary,
+            'validation_result': {
+                'is_accurate': result.validation_result.is_accurate,
+                'suggested_improvements': result.validation_result.suggested_improvements,
+                'improved_summary': result.validation_result.improved_summary
+            },
             'original_filename': session.get('original_filename', 'unknown')
         }
         

@@ -1,51 +1,40 @@
 # shared.py
 from pydantic import BaseModel
 from temporalio import activity
+from typing import Optional, List, Dict, Any
 
 # Using Pydantic for clearer data structures
 class DocumentInput(BaseModel):
     file_path: str # Path to the document file
 
-class OcrActivityResult(BaseModel):
-    full_text: str
+class GeminiDocumentResult(BaseModel):
+    markdown_content: str
+    summary: str
 
-class DocumentIntelligenceResult(BaseModel):
-    full_text: str
-    confidence: float
-    pages: int
-    tables: list = []
-    entities: list = []
-
-class SummarizationActivityResult(BaseModel):
-    # Both Gemini and Azure OpenAI will return a JSON string, we'll parse it into a dict
-    summary_json: dict
+class AzureValidationResult(BaseModel):
+    is_accurate: bool
+    suggested_improvements: List[str]
+    improved_summary: Optional[str] = None
 
 class WorkflowResult(BaseModel):
-    ocr_text: str
-    summary: dict
-
-# Define Document Intelligence Activity interface
-class DocumentIntelligenceActivities:
-    @activity.defn
-    async def process_document(self, doc_input: DocumentInput) -> DocumentIntelligenceResult:
-        ...
+    markdown_content: str
+    summary: str
+    validation_result: AzureValidationResult
 
 # Define Gemini Activity interface
 class GeminiActivities:
     @activity.defn
-    async def perform_ocr(self, doc_input: DocumentInput) -> OcrActivityResult:
-        ...
-
-    @activity.defn
-    async def perform_summarization(self, ocr_result: OcrActivityResult) -> SummarizationActivityResult:
+    async def generate_markdown_and_summary(self, doc_input: DocumentInput) -> GeminiDocumentResult:
+        """
+        Generate markdown representation and a summary of the document using Gemini
+        """
         ...
 
 # Define Azure OpenAI Activity interface
 class AzureOpenAIActivities:
     @activity.defn
-    async def perform_azure_ocr(self, doc_input: DocumentInput) -> OcrActivityResult:
-        ...
-
-    @activity.defn
-    async def perform_azure_summarization(self, ocr_result: OcrActivityResult) -> SummarizationActivityResult:
+    async def validate_summary(self, doc_input: DocumentInput, summary: str) -> AzureValidationResult:
+        """
+        Validate if the summary accurately represents the document and suggest improvements
+        """
         ...
