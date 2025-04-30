@@ -13,6 +13,9 @@ services:
       - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-demo_api_key}
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-https://example.openai.azure.com}
       - AZURE_OPENAI_MODEL_NAME=${AZURE_OPENAI_MODEL_NAME:-gpt-4}
+      - AZURE_OPENAI_OCR_MODEL=${AZURE_OPENAI_OCR_MODEL:-gpt-4-vision-preview}
+      - AZURE_OPENAI_SUMMARY_MODEL=${AZURE_OPENAI_SUMMARY_MODEL:-gpt-4}
+      - AZURE_OPENAI_VALIDATION_MODEL=${AZURE_OPENAI_VALIDATION_MODEL:-gpt-35-turbo}
     volumes:
       - ./app:/app/app
       - ./app/uploads:/app/app/uploads

@@ -8,7 +8,7 @@ This project provides a web-based document processing service that uses AI servi
 - **OCR Processing**: Extract text from images using either Google's Gemini or Azure OpenAI
 - **Text Summarization**: Generate concise summaries and keywords from extracted text
 - **Direct API Integration**: Simple and direct calls to AI APIs from the backend
-- **Multi-Provider Support**: Use both Gemini and Azure OpenAI services for complementary features
+- **Multi-Provider Support**: Choose between Gemini or Azure OpenAI for document processing, with ability to use different models for different functions
 - **Docker Support**: Easy deployment with Docker Compose or to Google Cloud Run
 
 ## Prerequisites
@@ -36,6 +36,10 @@ This project provides a web-based document processing service that uses AI servi
    AZURE_OPENAI_ENDPOINT=your_azure_endpoint
    AZURE_OPENAI_MODEL_NAME=your_model_name
    FLASK_SECRET_KEY=your_secret_key
+   # Optional - specify different models for different functions
+   AZURE_OPENAI_OCR_MODEL=your_vision_model
+   AZURE_OPENAI_SUMMARY_MODEL=your_gpt4_model
+   AZURE_OPENAI_VALIDATION_MODEL=your_gpt35_model
    ```
 
 3. **Start the service with Docker Compose**:

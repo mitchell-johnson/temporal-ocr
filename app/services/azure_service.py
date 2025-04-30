@@ -1,8 +1,10 @@
 import os
 import json
+import base64
 import logging
+import mimetypes
 from openai import AsyncAzureOpenAI
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,9 +17,14 @@ class AzureService:
         # Configure Azure OpenAI Client
         api_key = os.getenv("AZURE_OPENAI_API_KEY")
         endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        model_name = os.getenv("AZURE_OPENAI_MODEL_NAME")
         
-        if not all([api_key, endpoint, model_name]):
+        # Default model settings
+        self.default_model = os.getenv("AZURE_OPENAI_MODEL_NAME")
+        self.ocr_model = os.getenv("AZURE_OPENAI_OCR_MODEL", self.default_model)
+        self.summary_model = os.getenv("AZURE_OPENAI_SUMMARY_MODEL", self.default_model)
+        self.validation_model = os.getenv("AZURE_OPENAI_VALIDATION_MODEL", self.default_model)
+        
+        if not all([api_key, endpoint, self.default_model]):
             raise ValueError("Azure OpenAI configuration missing. Please set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_MODEL_NAME environment variables.")
         
         self.client = AsyncAzureOpenAI(
@@ -28,11 +35,127 @@ class AzureService:
         
         # Log configuration details (with sensitive info masked)
         logger.info(f"Azure OpenAI Endpoint: {endpoint}")
-        logger.info(f"Azure OpenAI Model: {model_name}")
+        logger.info(f"Azure OpenAI Default Model: {self.default_model}")
+        logger.info(f"Azure OpenAI OCR Model: {self.ocr_model}")
+        logger.info(f"Azure OpenAI Summary Model: {self.summary_model}")
+        logger.info(f"Azure OpenAI Validation Model: {self.validation_model}")
         logger.info(f"Azure OpenAI API Key: {'*' * 8}{api_key[-4:]}")  # Only show last 4 chars
         
-        self.model_name = model_name
         logger.info("Azure OpenAI Service Initialized.")
+
+    async def process_document(self, file_path: str) -> Tuple[str, str]:
+        """
+        Processes a document file using Azure OpenAI and returns the markdown content and summary.
+        
+        Args:
+            file_path: Path to the document file
+            
+        Returns:
+            Tuple[str, str]: (markdown_content, summary)
+        """
+        logger.info(f"Starting Azure markdown and summary generation for file: {file_path}")
+
+        try:
+            # Read the document file
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
+
+            # Determine the file type and set appropriate mime type
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if not mime_type:
+                mime_type = 'application/pdf'  # default to PDF if unknown
+
+            # Step 1: Extract text and convert to markdown using Azure OpenAI
+            markdown_content = await self._generate_markdown(file_bytes, mime_type)
+            
+            # Step 2: Generate summary from markdown content
+            summary = await self._generate_summary(markdown_content)
+            
+            return markdown_content, summary
+
+        except FileNotFoundError:
+            logger.error(f"File not found: {file_path}")
+            raise
+        except Exception as e:
+            logger.error(f"Error during Azure markdown and summary generation: {e}", exc_info=True)
+            raise
+
+    async def _generate_markdown(self, file_bytes: bytes, mime_type: str) -> str:
+        """Generate markdown representation of a document using Azure OpenAI"""
+        # Convert binary data to base64
+        base64_data = base64.b64encode(file_bytes).decode('ascii')
+        
+        # Create the message with the file attachment
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Convert this document to well-formatted markdown. Preserve all text content, headings, lists, tables, and structure from the original document. Create appropriate markdown headings and formatting. Make sure the markdown is properly structured with clear heading hierarchy."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{base64_data}"
+                        }
+                    }
+                ]
+            }
+        ]
+        
+        # Call Azure OpenAI API for markdown generation
+        logger.info("Sending request to Azure OpenAI for markdown generation...")
+        response = await self.client.chat.completions.create(
+            model=self.ocr_model,
+            messages=messages,
+            max_tokens=4000
+        )
+        
+        if not response.choices or not response.choices[0].message.content:
+            logger.warning("Azure OpenAI markdown generation response was empty.")
+            return "Failed to generate markdown content."
+        
+        markdown_content = response.choices[0].message.content
+        logger.info(f"Markdown generated with {len(markdown_content)} characters.")
+        
+        return markdown_content
+
+    async def _generate_summary(self, markdown_content: str) -> str:
+        """Generate a summary from markdown content using Azure OpenAI"""
+        # Create the prompt for summarization
+        summarization_prompt = f"""
+        Create a comprehensive summary of the following markdown document. 
+        Format your summary as well-structured markdown with:
+        - A clear hierarchical structure using headings (## for main sections, ### for subsections)
+        - Bullet points for key findings or important facts
+        - Bold and italic formatting for emphasis on important terms
+        - Lists for sequential information when appropriate
+        - Brief tables for summarizing structured data if present
+        
+        Focus on the most important information, key findings, main points, and significant details.
+        Make sure the summary captures the essence of the document and is easy to understand.
+        
+        Markdown document:
+        {markdown_content}
+        """
+        
+        # Call Azure OpenAI API for summarization
+        logger.info("Sending request to Azure OpenAI for summary generation...")
+        response = await self.client.chat.completions.create(
+            model=self.summary_model,
+            messages=[{"role": "user", "content": summarization_prompt}],
+            max_tokens=2000
+        )
+        
+        if not response.choices or not response.choices[0].message.content:
+            logger.warning("Azure OpenAI summary generation response was empty.")
+            return "Failed to generate summary."
+        
+        summary = response.choices[0].message.content
+        logger.info(f"Summary generated with {len(summary)} characters.")
+        
+        return summary
 
     async def validate_summary(self, summary: str) -> Dict[str, Any]:
         """
@@ -56,7 +179,7 @@ class AzureService:
             # Call Azure OpenAI API for validation
             logger.info("Sending request to Azure OpenAI for summary validation...")
             response = await self.client.chat.completions.create(
-                model=self.model_name,
+                model=self.validation_model,
                 messages=[
                     {
                         "role": "user",
@@ -64,7 +187,7 @@ class AzureService:
                     }
                 ],
                 response_format={"type": "json_object"},
-                max_completion_tokens=2000
+                max_tokens=2000
             )
 
             if not response.choices or not response.choices[0].message.content:

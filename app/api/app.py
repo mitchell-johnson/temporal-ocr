@@ -65,7 +65,7 @@ def upload_file():
         session['uploaded_file_path'] = file_path
         session['original_filename'] = filename
         
-        # Determine which model to use (keeping this for future use)
+        # Determine which provider to use
         use_azure = 'use_azure' in request.form and request.form['use_azure'] == 'on'
         session['use_azure'] = use_azure
         
@@ -83,6 +83,10 @@ def process_file():
         flash('No file uploaded', 'error')
         return redirect(url_for('index'))
     
+    # Get provider preference from session
+    use_azure = session.get('use_azure', False)
+    provider = "azure" if use_azure else "gemini"
+    
     # Call the async function to process the document
     try:
         # Create an event loop in the context of this request
@@ -90,7 +94,7 @@ def process_file():
         asyncio.set_event_loop(loop)
         
         # Process the document directly with our service
-        result = loop.run_until_complete(document_service.process_document(file_path))
+        result = loop.run_until_complete(document_service.process_document(file_path, provider))
         
         # Close the loop
         loop.close()
@@ -104,7 +108,8 @@ def process_file():
                 'suggested_improvements': result['validation_result']['suggested_improvements'],
                 'improved_summary': result['validation_result']['improved_summary']
             },
-            'original_filename': session.get('original_filename', 'unknown')
+            'original_filename': session.get('original_filename', 'unknown'),
+            'provider_used': result['provider_used']
         }
         
         # Clean up the file if needed
