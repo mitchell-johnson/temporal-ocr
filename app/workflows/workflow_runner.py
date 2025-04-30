@@ -1,6 +1,7 @@
 import os
 import uuid
 import asyncio
+import ssl
 from temporalio.client import Client
 import json
 from pydantic import BaseModel
@@ -42,7 +43,7 @@ async def start_document_workflow(file_path, client=None, workflow_id=None) -> W
     """
     # Connect to Temporal server if client is not provided
     if client is None:
-        # Use default JSON-based converter instead of pydantic_data_converter
+        # Connect to Temporal server without TLS (for local development)
         client = await Client.connect(TEMPORAL_HOST)
 
     # Define the input for the workflow

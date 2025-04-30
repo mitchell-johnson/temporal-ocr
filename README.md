@@ -1,21 +1,21 @@
-# Temporal OCR Web Service
+# OCR Web Service
 
-This project provides a web-based document processing service that uses Temporal and AI services (Google Gemini or Azure OpenAI) to perform OCR and text summarization on images and PDFs.
+This project provides a web-based document processing service that uses AI services (Google Gemini or Azure OpenAI) to perform OCR and text summarization on images and PDFs.
 
 ## Features
 
 - **Web UI**: Upload documents through a user-friendly interface
 - **OCR Processing**: Extract text from images using either Google's Gemini or Azure OpenAI
 - **Text Summarization**: Generate concise summaries and keywords from extracted text
-- **Temporal Workflow**: Reliable, fault-tolerant processing with automatic retries
-- **Multi-Provider Support**: Switch between Gemini and Azure OpenAI with a checkbox
+- **Direct API Integration**: Simple and direct calls to AI APIs from the backend
+- **Multi-Provider Support**: Use both Gemini and Azure OpenAI services for complementary features
 - **Docker Support**: Easy deployment with Docker Compose or to Google Cloud Run
 
 ## Prerequisites
 
 - Python 3.9+
 - Docker and Docker Compose for local development
-- API keys for either:
+- API keys for:
   - Google Gemini API
   - Azure OpenAI (with vision capabilities)
 
@@ -23,8 +23,8 @@ This project provides a web-based document processing service that uses Temporal
 
 1. **Clone the repository**:
    ```bash
-   git clone git@github.com:mitchell-johnson/temporal-ocr.git
-   cd temporal-ocr
+   git clone git@github.com:mitchell-johnson/ocr.git
+   cd ocr
    ```
 
 2. **Configure environment variables**:
@@ -38,20 +38,15 @@ This project provides a web-based document processing service that uses Temporal
    FLASK_SECRET_KEY=your_secret_key
    ```
 
-3. **Start the services with Docker Compose**:
+3. **Start the service with Docker Compose**:
    ```bash
    docker-compose up
    ```
 
-   This will start:
-   - Temporal server and UI
-   - The web application
-   - The worker process
-   - Supporting services (Cassandra)
+   This will start the web application.
 
 4. **Access the application**:
    - Web UI: http://localhost:8000
-   - Temporal UI: http://localhost:8080
 
 ## Manual Setup (Without Docker)
 
@@ -66,15 +61,7 @@ This project provides a web-based document processing service that uses Temporal
    pip install -r requirements.txt
    ```
 
-3. **Start Temporal Server**:
-   Follow the [Temporal documentation](https://docs.temporal.io/clusters/quick-install/) to install and start the Temporal server.
-
-4. **Start the Worker**:
-   ```bash
-   python -m app.run_worker
-   ```
-
-5. **Start the Web Application**:
+3. **Start the Web Application**:
    ```bash
    python app.py
    ```
@@ -85,40 +72,33 @@ This application is ready to deploy to Google Cloud Run with minimal configurati
 
 1. **Build and push the Docker image**:
    ```bash
-   gcloud builds submit --tag gcr.io/[YOUR_PROJECT_ID]/temporal-ocr
+   gcloud builds submit --tag gcr.io/[YOUR_PROJECT_ID]/ocr
    ```
 
 2. **Deploy to Cloud Run**:
    ```bash
-   gcloud run deploy temporal-ocr \
-     --image gcr.io/[YOUR_PROJECT_ID]/temporal-ocr \
+   gcloud run deploy ocr \
+     --image gcr.io/[YOUR_PROJECT_ID]/ocr \
      --platform managed \
      --region [REGION] \
      --allow-unauthenticated \
-     --set-env-vars="TEMPORAL_HOST=your-temporal-host,GEMINI_API_KEY=your-key,FLASK_SECRET_KEY=your-key"
+     --set-env-vars="GEMINI_API_KEY=your-key,FLASK_SECRET_KEY=your-key,AZURE_OPENAI_API_KEY=your-key,AZURE_OPENAI_ENDPOINT=your-endpoint,AZURE_OPENAI_MODEL_NAME=your-model"
    ```
-
-3. **Note on Temporal**: For production use, you'll need to set up a Temporal server or use Temporal Cloud.
 
 ## Project Structure
 
 - `/app`: Main application package
   - `/api`: Web API and Flask application
-  - `/activities`: Implementation of OCR and summarization activities
+  - `/services`: Implementation of AI services
   - `/models`: Shared data models and interfaces
-  - `/workflows`: Temporal workflow definitions
   - `/web`: Web UI components (templates and static files)
   - `/uploads`: Temporary storage for uploaded files
-  - `run_worker.py`: Worker process implementation
 - `/scripts`: Utility scripts
-  - `list_gemini_models.py`: Script to list available Gemini models
-  - `start_workflow.py`: Script to manually start a workflow
 - `/data`: Data files (gitignored)
 - `/docs`: Documentation and example files
   - `fishinglicence.png`: Sample image for testing
   - `result_screenshot.png`: Screenshot of the application
 - `/deploy`: Deployment configuration
-- `/dynamicconfig`: Temporal server configuration
 - `app.py`: Application entry point
 - `Dockerfile`: Container configuration for deployment
 - `docker-compose.yml`: Local development environment setup

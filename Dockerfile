@@ -19,7 +19,6 @@ RUN mkdir -p app/uploads
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_SECRET_KEY="production-secret-key-replace-this"
-ENV TEMPORAL_HOST="temporal:7233"
 
 # Expose the port
 EXPOSE $PORT

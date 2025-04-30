@@ -5,8 +5,6 @@ import logging
 from flask import Flask, request, render_template, jsonify, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-from temporalio.client import Client
-from temporalio.contrib.pydantic import pydantic_data_converter
 
 # Load environment variables
 load_dotenv(override=True)
@@ -15,9 +13,8 @@ load_dotenv(override=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import the workflow interface and input object
-from app.workflows.workflow_runner import start_document_workflow
-from app.models.shared import DocumentInput
+# Import the document service
+from app.services.document_service import DocumentService
 
 # Initialize Flask app
 app = Flask(__name__, 
@@ -31,6 +28,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
+
+# Initialize the document service
+document_service = DocumentService()
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -65,7 +65,7 @@ def upload_file():
         session['uploaded_file_path'] = file_path
         session['original_filename'] = filename
         
-        # Determine which model to use
+        # Determine which model to use (keeping this for future use)
         use_azure = 'use_azure' in request.form and request.form['use_azure'] == 'on'
         session['use_azure'] = use_azure
         
@@ -83,29 +83,26 @@ def process_file():
         flash('No file uploaded', 'error')
         return redirect(url_for('index'))
     
-    # use_azure param is no longer needed but we'll keep it in session for future use
-    use_azure = session.get('use_azure', False)
-    
-    # Call the async function to start the workflow
+    # Call the async function to process the document
     try:
         # Create an event loop in the context of this request
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
-        # Run the async workflow - only pass the file_path
-        result = loop.run_until_complete(start_document_workflow(file_path))
+        # Process the document directly with our service
+        result = loop.run_until_complete(document_service.process_document(file_path))
         
         # Close the loop
         loop.close()
         
         # Store result in session
         session['result'] = {
-            'markdown_content': result.markdown_content,
-            'summary': result.summary,
+            'markdown_content': result['markdown_content'],
+            'summary': result['summary'],
             'validation_result': {
-                'is_accurate': result.validation_result.is_accurate,
-                'suggested_improvements': result.validation_result.suggested_improvements,
-                'improved_summary': result.validation_result.improved_summary
+                'is_accurate': result['validation_result']['is_accurate'],
+                'suggested_improvements': result['validation_result']['suggested_improvements'],
+                'improved_summary': result['validation_result']['improved_summary']
             },
             'original_filename': session.get('original_filename', 'unknown')
         }

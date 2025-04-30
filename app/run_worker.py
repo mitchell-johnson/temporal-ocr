@@ -1,6 +1,7 @@
 import asyncio
 import os
 import inspect
+import ssl
 from temporalio.client import Client
 from temporalio.worker import Worker
 import json
@@ -36,7 +37,7 @@ class PydanticDataConverter:
         return data
 
 async def main():
-    # Connect to Temporal server
+    # Connect to Temporal server without TLS (for local development)
     client = await Client.connect(TEMPORAL_HOST)
 
     # Instantiate activity implementations
