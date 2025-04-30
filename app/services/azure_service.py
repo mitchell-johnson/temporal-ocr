@@ -18,30 +18,25 @@ class AzureService:
         api_key = os.getenv("AZURE_OPENAI_API_KEY")
         endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         
-        # Default model settings
-        self.default_model = os.getenv("AZURE_OPENAI_MODEL_NAME")
-        self.ocr_model = os.getenv("AZURE_OPENAI_OCR_MODEL", self.default_model)
-        self.summary_model = os.getenv("AZURE_OPENAI_SUMMARY_MODEL", self.default_model)
-        self.validation_model = os.getenv("AZURE_OPENAI_VALIDATION_MODEL", self.default_model)
+        # Default model settings - using newer models
+        self.ocr_model = "gpt-4-vision-preview"  # This is a stable model name
+        self.summary_model = "gpt-4"             # This is a stable model name
+        self.validation_model = "gpt-35-turbo"   # This is a stable model name
         
-        if not all([api_key, endpoint, self.default_model]):
-            raise ValueError("Azure OpenAI configuration missing. Please set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_MODEL_NAME environment variables.")
+        if not all([api_key, endpoint]):
+            raise ValueError("Azure OpenAI configuration missing. Please set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT environment variables.")
         
         self.client = AsyncAzureOpenAI(
             api_key=api_key,
-            api_version="2024-02-15-preview",  # Latest version supporting vision
+            api_version="2024-02-15-preview",  # Use the latest stable version
             azure_endpoint=endpoint
         )
         
-        # Log configuration details (with sensitive info masked)
-        logger.info(f"Azure OpenAI Endpoint: {endpoint}")
-        logger.info(f"Azure OpenAI Default Model: {self.default_model}")
-        logger.info(f"Azure OpenAI OCR Model: {self.ocr_model}")
-        logger.info(f"Azure OpenAI Summary Model: {self.summary_model}")
-        logger.info(f"Azure OpenAI Validation Model: {self.validation_model}")
-        logger.info(f"Azure OpenAI API Key: {'*' * 8}{api_key[-4:]}")  # Only show last 4 chars
-        
-        logger.info("Azure OpenAI Service Initialized.")
+        # Log configuration details
+        logger.info(f"Azure OpenAI Service Initialized with models:")
+        logger.info(f"- OCR Model: {self.ocr_model}")
+        logger.info(f"- Summary Model: {self.summary_model}")
+        logger.info(f"- Validation Model: {self.validation_model}")
 
     async def process_document(self, file_path: str) -> Tuple[str, str]:
         """
@@ -105,7 +100,7 @@ class AzureService:
         ]
         
         # Call Azure OpenAI API for markdown generation
-        logger.info("Sending request to Azure OpenAI for markdown generation...")
+        logger.info(f"Sending request to Azure OpenAI for markdown generation using model: {self.ocr_model}")
         response = await self.client.chat.completions.create(
             model=self.ocr_model,
             messages=messages,
@@ -141,7 +136,7 @@ class AzureService:
         """
         
         # Call Azure OpenAI API for summarization
-        logger.info("Sending request to Azure OpenAI for summary generation...")
+        logger.info(f"Sending request to Azure OpenAI for summary generation using model: {self.summary_model}")
         response = await self.client.chat.completions.create(
             model=self.summary_model,
             messages=[{"role": "user", "content": summarization_prompt}],
@@ -177,7 +172,7 @@ class AzureService:
             validation_prompt = self._get_validation_prompt(summary)
             
             # Call Azure OpenAI API for validation
-            logger.info("Sending request to Azure OpenAI for summary validation...")
+            logger.info(f"Sending request to Azure OpenAI for summary validation using model: {self.validation_model}")
             response = await self.client.chat.completions.create(
                 model=self.validation_model,
                 messages=[
@@ -247,4 +242,4 @@ class AzureService:
         - "is_accurate": Boolean indicating if the summary appears to be of good quality (true/false)
         - "suggested_improvements": Array of specific improvements (empty array if none)
         - "improved_summary": Optional improved version of the summary (only if significant improvements are needed)
-        """ 
+        """
