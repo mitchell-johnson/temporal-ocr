@@ -38,38 +38,63 @@ services:
       - CASSANDRA_LISTEN_ADDRESS=127.0.0.1
       - CASSANDRA_CLUSTER_NAME=temporal
 
-  # Web application
-  webapp:
-    container_name: webapp
-    build: .
-    ports:
-      - 8000:8080
+  # Gemini Worker
+  gemini-worker:
+    container_name: gemini-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["gemini"]
     environment:
-      - FLASK_SECRET_KEY=dev-secret-key
       - TEMPORAL_HOST=temporal:7233
       - GEMINI_API_KEY=${GEMINI_API_KEY:-demo_api_key}
-      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-demo_api_key}
-      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-https://example.openai.azure.com}
-      - AZURE_OPENAI_MODEL_NAME=${AZURE_OPENAI_MODEL_NAME:-gpt-4}
     volumes:
-      - ./app:/app/app
-      - ./app/uploads:/app/app/uploads
+      - ./uploads:/app/uploads
     depends_on:
       - temporal
+    restart: unless-stopped
 
-  # Worker
-  worker:
-    container_name: worker
-    build: .
-    command: python -m app.run_worker
+  # OpenAI Worker
+  openai-worker:
+    container_name: openai-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["openai"]
     environment:
       - TEMPORAL_HOST=temporal:7233
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-demo_api_key}
-      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-demo_api_key}
-      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-https://example.openai.azure.com}
-      - AZURE_OPENAI_MODEL_NAME=${AZURE_OPENAI_MODEL_NAME:-gpt-4}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-demo_api_key}
     volumes:
-      - ./app:/app/app
-      - ./app/uploads:/app/app/uploads
+      - ./uploads:/app/uploads
     depends_on:
-      - temporal 
+      - temporal
+    restart: unless-stopped
+
+  # Anthropic Worker
+  anthropic-worker:
+    container_name: anthropic-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["anthropic"]
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-demo_api_key}
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - temporal
+    restart: unless-stopped
+
+  # Workflow Worker
+  workflow-worker:
+    container_name: workflow-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["workflow"]
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+    depends_on:
+      - temporal
+    restart: unless-stopped

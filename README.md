@@ -1,127 +1,113 @@
-# Temporal OCR Web Service
+# Temporal AI Workflow Service - C# Implementation
 
-This project provides a web-based document processing service that uses Temporal and AI services (Google Gemini or Azure OpenAI) to perform OCR and text summarization on images and PDFs.
+This project provides a generic AI temporal workflow environment with dedicated workers for Google Gemini, OpenAI, and Anthropic Claude. It demonstrates how to build robust, distributed AI workflows using Temporal with .NET 8 and C#.
+
+**Note: This project has been fully converted from Python to C#. All Python code has been removed. The Python documentation is preserved in AI_TEMPORAL_WORKFLOW_PYTHON_README.md for reference.**
+
+## Key Changes from Python Version
+
+- All code converted to C# with .NET 8
+- Strong typing with C# records and interfaces
+- Native async/await support throughout
+- Docker configuration updated for .NET runtime
+- Helper script `run.sh` for easy execution
 
 ## Features
 
-- **Web UI**: Upload documents through a user-friendly interface
-- **OCR Processing**: Extract text from images using either Google's Gemini or Azure OpenAI
-- **Text Summarization**: Generate concise summaries and keywords from extracted text
-- **Temporal Workflow**: Reliable, fault-tolerant processing with automatic retries
-- **Multi-Provider Support**: Switch between Gemini and Azure OpenAI with a checkbox
-- **Docker Support**: Easy deployment with Docker Compose or to Google Cloud Run
+- **3 AI Workers**: Dedicated workers for Google Gemini, OpenAI, and Anthropic Claude
+- **Generic AI Interface**: Each worker exposes a `ProcessRequestAsync` method for prompts and files
+- **Example Workflows**: Three workflow patterns demonstrating AI provider combinations
+- **Temporal Integration**: Reliable, fault-tolerant workflow execution with automatic retries
+- **Multi-Provider Support**: Use different AI providers for their strengths
+- **Docker Support**: Easy deployment with Docker Compose
+- **Strong Typing**: Full C# type safety with records and interfaces
 
 ## Prerequisites
 
-- Python 3.9+
-- Docker and Docker Compose for local development
-- API keys for either:
+- Docker and Docker Compose
+- .NET 8 SDK (for local development)
+- API keys for:
   - Google Gemini API
-  - Azure OpenAI (with vision capabilities)
+  - OpenAI API
+  - Anthropic Claude API
 
-## Local Development Setup
+## Quick Start
 
-1. **Clone the repository**:
+1. **Setup environment variables**:
    ```bash
-   git clone git@github.com:mitchell-johnson/temporal-ocr.git
-   cd temporal-ocr
+   # Copy the example environment file
+   cp .env.example .env
+   # Edit .env with your API keys
    ```
 
-2. **Configure environment variables**:
-   Create a `.env` file in the project root with your API credentials:
-
-   ```
-   GEMINI_API_KEY=your_gemini_api_key
-   AZURE_OPENAI_API_KEY=your_azure_api_key
-   AZURE_OPENAI_ENDPOINT=your_azure_endpoint
-   AZURE_OPENAI_MODEL_NAME=your_model_name
-   FLASK_SECRET_KEY=your_secret_key
-   ```
-
-3. **Start the services with Docker Compose**:
+2. **Run with Docker**:
    ```bash
-   docker-compose up
+   # Using the helper script
+   ./run.sh docker
+   
+   # Or directly with docker-compose
+   docker-compose up -d
    ```
 
-   This will start:
-   - Temporal server and UI
-   - The web application
-   - The worker process
-   - Supporting services (Cassandra)
+3. **Access Temporal UI**:
+   - http://localhost:8088
 
-4. **Access the application**:
-   - Web UI: http://localhost:8000
-   - Temporal UI: http://localhost:8080
+## Local Development
 
-## Manual Setup (Without Docker)
+```bash
+# Restore dependencies
+dotnet restore
 
-1. **Create and activate a virtual environment**:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+# Run specific workers
+./run.sh gemini      # Gemini worker
+./run.sh openai      # OpenAI worker
+./run.sh anthropic   # Anthropic worker
+./run.sh workflow    # Workflow worker
+./run.sh test        # Run tests
+```
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Example Workflows
 
-3. **Start Temporal Server**:
-   Follow the [Temporal documentation](https://docs.temporal.io/clusters/quick-install/) to install and start the Temporal server.
+The project includes three example workflows:
 
-4. **Start the Worker**:
-   ```bash
-   python -m app.run_worker
-   ```
-
-5. **Start the Web Application**:
-   ```bash
-   python app.py
-   ```
-
-## Deployment to Google Cloud Run
-
-This application is ready to deploy to Google Cloud Run with minimal configuration.
-
-1. **Build and push the Docker image**:
-   ```bash
-   gcloud builds submit --tag gcr.io/[YOUR_PROJECT_ID]/temporal-ocr
-   ```
-
-2. **Deploy to Cloud Run**:
-   ```bash
-   gcloud run deploy temporal-ocr \
-     --image gcr.io/[YOUR_PROJECT_ID]/temporal-ocr \
-     --platform managed \
-     --region [REGION] \
-     --allow-unauthenticated \
-     --set-env-vars="TEMPORAL_HOST=your-temporal-host,GEMINI_API_KEY=your-key,FLASK_SECRET_KEY=your-key"
-   ```
-
-3. **Note on Temporal**: For production use, you'll need to set up a Temporal server or use Temporal Cloud.
+1. **AI Consensus Workflow**: Sends the same prompt to all three AI providers and creates a consensus response
+2. **AI Chain Workflow**: Sequential processing where each AI builds on the previous response
+3. **AI Specialist Workflow**: Uses each AI provider for its strengths in parallel
 
 ## Project Structure
 
-- `/app`: Main application package
-  - `/api`: Web API and Flask application
-  - `/activities`: Implementation of OCR and summarization activities
-  - `/models`: Shared data models and interfaces
-  - `/workflows`: Temporal workflow definitions
-  - `/web`: Web UI components (templates and static files)
-  - `/uploads`: Temporary storage for uploaded files
-  - `run_worker.py`: Worker process implementation
-- `/scripts`: Utility scripts
-  - `list_gemini_models.py`: Script to list available Gemini models
-  - `start_workflow.py`: Script to manually start a workflow
-- `/data`: Data files (gitignored)
-- `/docs`: Documentation and example files
-  - `fishinglicence.png`: Sample image for testing
-  - `result_screenshot.png`: Screenshot of the application
-- `/deploy`: Deployment configuration
-- `/dynamicconfig`: Temporal server configuration
-- `app.py`: Application entry point
-- `Dockerfile`: Container configuration for deployment
-- `docker-compose.yml`: Local development environment setup
+```
+├── TemporalAI.csproj              # Project file
+├── src/TemporalAI/
+│   ├── Activities/                # AI provider implementations
+│   ├── Models/                    # Data models
+│   ├── Workers/                   # Worker hosts
+│   └── Workflows/                 # Example workflows
+├── docker-compose.yml             # Docker services
+├── Dockerfile                     # .NET Docker image
+└── run.sh                         # Helper script
+```
+
+## AI Providers
+
+### Google Gemini
+- Model: gemini-1.5-pro
+- Supports: Text and image inputs
+- Best for: Multimodal tasks, creative responses
+
+### OpenAI
+- Model: gpt-4-turbo-preview (gpt-4-vision-preview for images)
+- Supports: Text and image inputs
+- Best for: Code generation, technical analysis
+
+### Anthropic Claude
+- Model: claude-3-opus-20240229
+- Supports: Text and image inputs
+- Best for: Reasoning, analysis, strategic thinking
+
+## Documentation
+
+For complete documentation, see [AI_TEMPORAL_WORKFLOW_README.md](AI_TEMPORAL_WORKFLOW_README.md)
 
 ## License
 
