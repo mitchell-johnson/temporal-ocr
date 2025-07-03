@@ -1,18 +1,36 @@
-# AI Temporal Workflow Environment
+# AI Temporal Workflow Environment - C# Version
 
-This project provides a generic AI temporal workflow environment with dedicated workers for Google Gemini, OpenAI, and Anthropic Claude. It demonstrates how to build robust, distributed AI workflows using Temporal.
+This is the C# implementation of the AI temporal workflow environment with dedicated workers for Google Gemini, OpenAI, and Anthropic Claude. It demonstrates building robust, distributed AI workflows using Temporal with .NET 8.
+
+## Quick Start with Helper Script
+
+A helper script `run.sh` is provided for easy execution:
+
+```bash
+# Run with Docker (recommended)
+./run.sh docker
+
+# Run individual workers locally
+./run.sh gemini      # Run Gemini worker
+./run.sh openai      # Run OpenAI worker
+./run.sh anthropic   # Run Anthropic worker
+./run.sh workflow    # Run workflow worker
+./run.sh test        # Run workflow tests
+```
 
 ## Architecture Overview
 
 The system consists of:
 - **3 Dedicated AI Workers**: Separate workers for Gemini, OpenAI, and Anthropic
-- **Generic AI Activities**: Each worker exposes a `process_request` function that accepts prompts and optional files
+- **Generic AI Activities**: Each worker exposes a `ProcessRequestAsync` method that accepts prompts and optional files
 - **3 Example Workflows**: Demonstrating different patterns for combining AI providers
 - **Docker-based deployment**: Easy setup with docker-compose
+- **.NET 8 based**: Modern C# with async/await patterns throughout
 
 ## Prerequisites
 
 - Docker and Docker Compose
+- .NET 8 SDK (for local development)
 - API Keys for:
   - Google Gemini (`GEMINI_API_KEY`)
   - OpenAI (`OPENAI_API_KEY`)
@@ -21,7 +39,7 @@ The system consists of:
 ## Quick Start
 
 1. **Clone and setup environment variables**:
-   ```bash
+      ```bash
    # Create .env file with your API keys
    cat > .env << EOF
    GEMINI_API_KEY=your_gemini_key
@@ -30,173 +48,219 @@ The system consists of:
    EOF
    ```
 
-2. **Start the services**:
+2. **Start the services using the C# docker-compose**:
    ```bash
-   docker-compose up -d
+   docker-compose -f docker-compose.csharp.yml up -d
    ```
 
    This starts:
    - Temporal server (port 7233)
    - Temporal UI (port 8088)
    - 3 AI Workers (Gemini, OpenAI, Anthropic)
-   - Web application (port 8000)
+   - Workflow Worker
 
 3. **Monitor services**:
    - Temporal UI: http://localhost:8088
-   - Web App: http://localhost:8000
+
+## Local Development
+
+### Building the Project
+
+```bash
+# Restore dependencies
+dotnet restore
+
+# Build the project
+dotnet build
+
+# Run a specific worker locally
+dotnet run -- gemini      # Run Gemini worker
+dotnet run -- openai      # Run OpenAI worker
+dotnet run -- anthropic   # Run Anthropic worker
+dotnet run -- workflow    # Run workflow worker
+dotnet run -- all         # Run all workers (development only)
+```
+
+### Running Tests
+
+```bash
+# Add a test command to Program.cs or run the test workflow
+dotnet run -- test
+```
 
 ## AI Workers
 
 ### 1. Gemini Worker
 - **Task Queue**: `gemini-ai-queue`
-- **Strengths**: Multimodal capabilities, vision tasks, creative responses
-- **Models**: Uses Gemini 1.5 Pro
+- **Implementation**: `src/TemporalAI/Activities/GeminiActivities.cs`
+- **Uses**: Google Gemini API (REST)
+- **Strengths**: Multimodal capabilities, vision tasks
 
 ### 2. OpenAI Worker  
 - **Task Queue**: `openai-ai-queue`
+- **Implementation**: `src/TemporalAI/Activities/OpenAIActivities.cs`
+- **Uses**: Official OpenAI .NET SDK
 - **Strengths**: Code generation, technical analysis
-- **Models**: GPT-4 Turbo (with vision support)
 
 ### 3. Anthropic Worker
 - **Task Queue**: `anthropic-ai-queue`
+- **Implementation**: `src/TemporalAI/Activities/AnthropicActivities.cs`
+- **Uses**: HTTP client with Anthropic API
 - **Strengths**: Reasoning, analysis, strategic thinking
-- **Models**: Claude 3 Opus
 
 ## Generic AI Activity Interface
 
 Each worker implements the same interface:
 
-```python
-async def process_request(request: AIRequest) -> AIResponse:
-    """
-    Process an AI request
-    
-    Args:
-        request: AIRequest containing:
-            - prompt: str - The prompt to process
-            - file_path: Optional[str] - Path to file (images, documents)
-            - parameters: Optional[Dict] - Model parameters (temperature, etc.)
-    
-    Returns:
-        AIResponse containing:
-            - content: str - The AI response
-            - model_used: str - Model that processed the request
-            - tokens_used: Optional[int] - Token usage
-            - metadata: Optional[Dict] - Additional metadata
-    """
+```csharp
+public interface IGeminiActivities // (same for OpenAI and Anthropic)
+{
+    [Activity]
+    Task<AIResponse> ProcessRequestAsync(AIRequest request);
+}
+
+public record AIRequest
+{
+    public required string Prompt { get; init; }
+    public string? FilePath { get; init; }
+    public Dictionary<string, object>? Parameters { get; init; }
+}
+
+public record AIResponse
+{
+    public required string Content { get; init; }
+    public required string ModelUsed { get; init; }
+    public int? TokensUsed { get; init; }
+    public Dictionary<string, object>? Metadata { get; init; }
+}
 ```
 
 ## Example Workflows
 
 ### 1. AI Consensus Workflow
-Sends the same prompt to all three providers and creates a consensus response.
-
-**Use Case**: When you need multiple perspectives or want to validate responses across models.
-
-```python
-@workflow.defn(name="ai-consensus-workflow")
-class AIConsensusWorkflow:
-    # Executes prompt on all providers in parallel
-    # Creates consensus from all responses
+```csharp
+[Workflow("ai-consensus-workflow")]
+public class AIConsensusWorkflow
+{
+    // Executes prompt on all providers in parallel
+    // Creates consensus from all responses
+}
 ```
 
 ### 2. AI Chain Workflow  
-Sequential processing: Gemini → OpenAI → Anthropic
-
-**Use Case**: When you want each AI to build upon the previous response.
-
-```python
-@workflow.defn(name="ai-chain-workflow")
-class AIChainWorkflow:
-    # Gemini: Initial analysis
-    # OpenAI: Refines and enhances
-    # Anthropic: Validates and polishes
+```csharp
+[Workflow("ai-chain-workflow")]
+public class AIChainWorkflow
+{
+    // Sequential: Gemini → OpenAI → Anthropic
+    // Each builds on the previous response
+}
 ```
 
 ### 3. AI Specialist Workflow
-Uses each AI provider for its strengths in parallel, then synthesizes results.
-
-**Use Case**: Complex tasks requiring different types of analysis.
-
-```python
-@workflow.defn(name="ai-specialist-workflow")
-class AISpecialistWorkflow:
-    # Gemini: Visual/creative analysis
-    # OpenAI: Technical implementation
-    # Anthropic: Strategic analysis
-    # Synthesis: Combined insights
+```csharp
+[Workflow("ai-specialist-workflow")]
+public class AISpecialistWorkflow
+{
+    // Uses each AI for its strengths in parallel
+    // Synthesizes results into unified response
+}
 ```
 
-## Testing the Workflows
+## Project Structure
 
-Run the test script to see all workflows in action:
-
-```bash
-# Using Docker
-docker-compose exec webapp python scripts/test_ai_workflows.py
-
-# Or locally (with dependencies installed)
-python scripts/test_ai_workflows.py
 ```
+.
+├── TemporalAI.csproj              # Project file with dependencies
+├── src/
+│   └── TemporalAI/
+│       ├── Program.cs             # Main entry point
+│       ├── TestWorkflows.cs       # Test runner for workflows
+│       ├── Models/
+│       │   └── AIModels.cs        # Data models and interfaces
+│       ├── Activities/
+│       │   ├── GeminiActivities.cs    # Gemini implementation
+│       │   ├── OpenAIActivities.cs    # OpenAI implementation
+│       │   └── AnthropicActivities.cs # Anthropic implementation
+│       ├── Workers/
+│       │   ├── GeminiWorker.cs        # Gemini worker host
+│       │   ├── OpenAIWorker.cs        # OpenAI worker host
+│       │   ├── AnthropicWorker.cs     # Anthropic worker host
+│       │   └── WorkflowWorker.cs      # Workflow worker host
+│       └── Workflows/
+│           └── AIExampleWorkflows.cs  # Example workflow implementations
+├── Dockerfile.csharp              # .NET Docker image
+└── docker-compose.csharp.yml      # Docker compose for C# version
+```
+
+## Key Differences from Python Version
+
+1. **Strong Typing**: All models use C# records with required properties
+2. **Async/Await**: Native async support throughout
+3. **Dependency Injection**: Built-in DI container for services
+4. **Activity Interfaces**: Strongly-typed interfaces for each AI provider
+5. **Structured Logging**: Uses Microsoft.Extensions.Logging
+6. **NuGet Packages**: Modern package management with .csproj
 
 ## Extending the System
 
 ### Adding New AI Providers
 
-1. Create a new activity implementation:
-   ```python
-   # app/activities/newai_activities.py
-   class NewAIActivitiesImpl(NewAIActivities):
-       async def process_request(self, request: AIRequest) -> AIResponse:
-           # Implementation
+1. Create the interface:
+   ```csharp
+   public interface INewAIActivities
+   {
+       [Activity]
+       Task<AIResponse> ProcessRequestAsync(AIRequest request);
+   }
    ```
 
-2. Create a worker script:
-   ```python
-   # app/run_newai_worker.py
-   worker = Worker(
-       client,
-       task_queue="newai-queue",
-       activities=[newai_activities.process_request],
-   )
+2. Implement the activities:
+   ```csharp
+   public class NewAIActivities : INewAIActivities
+   {
+       public async Task<AIResponse> ProcessRequestAsync(AIRequest request)
+       {
+           // Implementation
+       }
+   }
    ```
 
-3. Add to docker-compose:
-   ```yaml
-   newai-worker:
-     container_name: newai-worker
-     build: .
-     command: python -m app.run_newai_worker
-     environment:
-       - NEWAI_API_KEY=${NEWAI_API_KEY}
+3. Create the worker:
+   ```csharp
+   public class NewAIWorker
+   {
+       public static async Task RunAsync(string[] args)
+       {
+           // Worker setup and registration
+       }
+   }
    ```
+
+4. Update Program.cs to handle the new worker type
 
 ### Creating Custom Workflows
 
-```python
-from temporalio import workflow
-from app.models.ai_models import AIRequest, GeminiActivities
-
-@workflow.defn(name="my-custom-workflow")
-class MyCustomWorkflow:
-    @workflow.run
-    async def run(self, prompt: str):
-        # Use any combination of AI workers
-        result = await workflow.execute_activity(
-            GeminiActivities.process_request,
-            AIRequest(prompt=prompt),
-            task_queue="gemini-ai-queue",
-            start_to_close_timeout=timedelta(minutes=5),
-        )
-        return result
+```csharp
+[Workflow("my-custom-workflow")]
+public class MyCustomWorkflow
+{
+    [WorkflowRun]
+    public async Task<MyResult> RunAsync(MyInput input)
+    {
+        // Use any combination of AI workers
+        var result = await Workflow.ExecuteActivityAsync<IGeminiActivities, AIResponse>(
+            a => a.ProcessRequestAsync(new AIRequest { Prompt = input.Prompt }),
+            new ActivityOptions
+            {
+                TaskQueue = "gemini-ai-queue",
+                StartToCloseTimeout = TimeSpan.FromMinutes(5)
+            }
+        );
+        return new MyResult { Content = result.Content };
+    }
+}
 ```
-
-## File Support
-
-All workers support file inputs:
-- **Images**: Analyzed by vision-capable models
-- **Text files**: Content included in prompts
-- **Binary files**: Handled gracefully with metadata
 
 ## Environment Variables
 
@@ -207,33 +271,20 @@ All workers support file inputs:
 | `ANTHROPIC_API_KEY` | Anthropic API key | Yes |
 | `TEMPORAL_HOST` | Temporal server address | No (default: localhost:7233) |
 
-## Monitoring and Debugging
-
-1. **Temporal UI**: View workflows, activities, and worker status at http://localhost:8088
-
-2. **Worker Logs**: 
-   ```bash
-   docker-compose logs -f gemini-worker
-   docker-compose logs -f openai-worker
-   docker-compose logs -f anthropic-worker
-   ```
-
-3. **Workflow History**: Each workflow execution is fully recorded in Temporal
-
-## Best Practices
-
-1. **Error Handling**: Workers automatically retry failed activities
-2. **Timeouts**: Set appropriate timeouts for AI operations (default: 5 minutes)
-3. **Rate Limiting**: Consider implementing rate limits for API calls
-4. **File Cleanup**: Temporary files should be cleaned up after processing
-5. **Security**: Never commit API keys; use environment variables
-
 ## Troubleshooting
 
-1. **Worker not connecting**: Check TEMPORAL_HOST environment variable
+1. **Build errors**: Ensure you have .NET 8 SDK installed
 2. **API errors**: Verify API keys are correct and have necessary permissions
-3. **File not found**: Ensure file paths are relative to the worker's context
-4. **Memory issues**: Large files may need streaming approaches
+3. **Docker issues**: Check that all containers are running with `docker ps`
+4. **Worker not connecting**: Verify TEMPORAL_HOST is correct
+5. **Package restore failures**: Clear NuGet cache with `dotnet nuget locals all --clear`
+
+## Performance Considerations
+
+- Workers support concurrent activity execution (default: 10)
+- Use appropriate timeouts for AI operations (default: 5 minutes)
+- Consider implementing circuit breakers for API failures
+- Monitor memory usage, especially with large file processing
 
 ## License
 

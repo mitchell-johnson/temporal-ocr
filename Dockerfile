@@ -1,28 +1,38 @@
-FROM python:3.9-slim
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
 
-# Set the working directory
+# Copy project file
+COPY TemporalAI.csproj .
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy source code
+COPY src/ ./src/
+
+# Build the application
+RUN dotnet publish -c Release -o /app/publish
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
-# Copy requirements.txt
-COPY requirements.txt .
+# Install necessary dependencies for AI libraries if needed
+RUN apt-get update && apt-get install -y \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy published application
+COPY --from=build /app/publish .
 
-# Copy the application code
-COPY . .
+# Create directories for file uploads
+RUN mkdir -p /app/uploads
 
-# Create directory for uploads if it doesn't exist
-RUN mkdir -p app/uploads
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:8080
+ENV DOTNET_RUNNING_IN_CONTAINER=true
 
-# Environment variables
-ENV PORT=8080
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_SECRET_KEY="production-secret-key-replace-this"
-ENV TEMPORAL_HOST="temporal:7233"
-
-# Expose the port
-EXPOSE $PORT
-
-# Start the service using gunicorn
-CMD exec gunicorn --bind :$PORT --workers 2 --threads 8 --timeout 0 'app.api.app:app' 
+# Default to running all workers in development
+ENTRYPOINT ["dotnet", "TemporalAI.dll"]
+CMD ["all"]
