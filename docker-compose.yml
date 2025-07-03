@@ -57,7 +57,65 @@ services:
     depends_on:
       - temporal
 
-  # Worker
+  # Gemini Worker
+  gemini-worker:
+    container_name: gemini-worker
+    build: .
+    command: python -m app.run_gemini_worker
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-demo_api_key}
+    volumes:
+      - ./app:/app/app
+      - ./app/uploads:/app/app/uploads
+    depends_on:
+      - temporal
+    restart: unless-stopped
+
+  # OpenAI Worker
+  openai-worker:
+    container_name: openai-worker
+    build: .
+    command: python -m app.run_openai_worker
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-demo_api_key}
+    volumes:
+      - ./app:/app/app
+      - ./app/uploads:/app/app/uploads
+    depends_on:
+      - temporal
+    restart: unless-stopped
+
+  # Anthropic Worker
+  anthropic-worker:
+    container_name: anthropic-worker
+    build: .
+    command: python -m app.run_anthropic_worker
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-demo_api_key}
+    volumes:
+      - ./app:/app/app
+      - ./app/uploads:/app/app/uploads
+    depends_on:
+      - temporal
+    restart: unless-stopped
+
+  # Workflow Worker
+  workflow-worker:
+    container_name: workflow-worker
+    build: .
+    command: python -m app.run_workflow_worker
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      - temporal
+    restart: unless-stopped
+
+  # Legacy Worker (keeping for backward compatibility)
   worker:
     container_name: worker
     build: .
