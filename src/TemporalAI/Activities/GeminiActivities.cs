@@ -21,7 +21,7 @@ namespace TemporalAI.Activities
         private readonly ILogger<GeminiActivities> _logger;
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
-        private readonly string _model = "gemini-1.5-pro";
+        private readonly string _model = "gemini-2.5-pro";
 
         public GeminiActivities(ILogger<GeminiActivities> logger)
         {
@@ -106,10 +106,10 @@ namespace TemporalAI.Activities
 
                     generationConfig = new
                     {
-                        temperature = configDict["temperature"],
-                        topP = configDict["topP"],
-                        topK = configDict["topK"],
-                        maxOutputTokens = configDict["maxOutputTokens"]
+                        temperature = Convert.ToDouble(configDict["temperature"]),
+                        topP = Convert.ToDouble(configDict["topP"]),
+                        topK = Convert.ToInt32(configDict["topK"]),
+                        maxOutputTokens = Convert.ToInt32(configDict["maxOutputTokens"])
                     };
                 }
 
@@ -147,12 +147,12 @@ namespace TemporalAI.Activities
 
                 // Extract the response content
                 string responseContent = "";
-                if (result.candidates != null && result.candidates.Count > 0)
+                if (result?.candidates != null && result.candidates.Count > 0)
                 {
                     var candidate = result.candidates[0];
-                    if (candidate.content != null && candidate.content.parts != null && candidate.content.parts.Count > 0)
+                    if (candidate?.content != null && candidate.content.parts != null && candidate.content.parts.Count > 0)
                     {
-                        responseContent = candidate.content.parts[0].text;
+                        responseContent = candidate.content.parts[0].text?.ToString() ?? "";
                     }
                 }
 

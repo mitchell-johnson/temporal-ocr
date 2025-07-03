@@ -1,12 +1,6 @@
 #!/bin/bash
 # AIDEV-NOTE: Helper script to run the C# Temporal AI workers
 
-# Check if .NET is installed
-if ! command -v dotnet &> /dev/null; then
-    echo "Error: .NET SDK is not installed. Please install .NET 8 SDK."
-    exit 1
-fi
-
 # Check for command line arguments
 if [ $# -eq 0 ]; then
     echo "Usage: ./run.sh <worker-type>"
@@ -36,6 +30,12 @@ if [ "$WORKER_TYPE" == "docker" ]; then
     echo "To view logs: docker-compose logs -f"
     echo "To stop: docker-compose down"
     exit 0
+fi
+
+# Check if .NET is installed for non-docker commands
+if ! command -v dotnet &> /dev/null; then
+    echo "Error: .NET SDK is not installed. Please install .NET 8 SDK."
+    exit 1
 fi
 
 # Check if .env file exists

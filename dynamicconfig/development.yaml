@@ -1,1 +1,32 @@
-{}
+# AIDEV-NOTE: Basic Temporal dynamic config for development environment
+# This file contains dynamic configuration values for Temporal server
+
+# System limits
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true # force cache refresh on read to ensure fresh results
+
+# History service configuration
+history.maxPageSize:
+  - value: 1000
+
+# Matching service configuration  
+matching.numTaskqueueReadPartitions:
+  - value: 4
+matching.numTaskqueueWritePartitions:
+  - value: 4
+
+# Frontend service limits
+frontend.enableClientVersionCheck:
+  - value: false
+
+# Worker service configuration
+worker.enableSessionWorker:
+  - value: true
+
+# Visibility configuration
+system.visibilityArchivalState:
+  - value: "enabled"
+
+# Default namespace settings
+limit.maxIDLength:
+  - value: 1000 

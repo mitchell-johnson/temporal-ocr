@@ -42,23 +42,24 @@ namespace TemporalAI.Workers
                 // Create activity implementation
                 var activities = serviceProvider.GetRequiredService<AnthropicActivities>();
                 
-                // Create worker
-                using var worker = new TemporalWorker(
-                    client,
-                    new TemporalWorkerOptions(TaskQueue)
-                    {
-                        MaxConcurrentActivityExecutions = 10
-                    }
-                );
+                // Create worker with options
+                var options = new TemporalWorkerOptions(TaskQueue)
+                    .AddActivity(activities.ProcessRequestAsync);
                 
-                // Register activities
-                worker.RegisterActivity(activities.ProcessRequestAsync);
+                using var worker = new TemporalWorker(client, options);
                 
                 logger.LogInformation("Anthropic Worker started, listening on task queue '{TaskQueue}'", TaskQueue);
                 logger.LogInformation("Connected to Temporal at: {Host}", temporalHost);
                 
-                // Run the worker
-                await worker.ExecuteAsync();
+                // Run the worker with cancellation token
+                var cts = new System.Threading.CancellationTokenSource();
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    cts.Cancel();
+                };
+                
+                await worker.ExecuteAsync(cts.Token);
             }
             catch (Exception ex)
             {

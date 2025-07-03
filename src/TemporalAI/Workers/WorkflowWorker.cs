@@ -37,19 +37,13 @@ namespace TemporalAI.Workers
                     TargetHost = temporalHost
                 });
                 
-                // Create worker
-                using var worker = new TemporalWorker(
-                    client,
-                    new TemporalWorkerOptions(TaskQueue)
-                    {
-                        MaxConcurrentWorkflowTaskExecutions = 10
-                    }
-                );
+                // Create worker with options
+                var options = new TemporalWorkerOptions(TaskQueue)
+                    .AddWorkflow<AIConsensusWorkflow>()
+                    .AddWorkflow<AIChainWorkflow>()
+                    .AddWorkflow<AISpecialistWorkflow>();
                 
-                // Register workflows
-                worker.RegisterWorkflow<AIConsensusWorkflow>();
-                worker.RegisterWorkflow<AIChainWorkflow>();
-                worker.RegisterWorkflow<AISpecialistWorkflow>();
+                using var worker = new TemporalWorker(client, options);
                 
                 logger.LogInformation("Workflow Worker started, listening on task queue '{TaskQueue}'", TaskQueue);
                 logger.LogInformation("Connected to Temporal at: {Host}", temporalHost);
@@ -58,8 +52,15 @@ namespace TemporalAI.Workers
                 logger.LogInformation("- ai-chain-workflow");
                 logger.LogInformation("- ai-specialist-workflow");
                 
-                // Run the worker
-                await worker.ExecuteAsync();
+                // Run the worker with cancellation token
+                var cts = new System.Threading.CancellationTokenSource();
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    cts.Cancel();
+                };
+                
+                await worker.ExecuteAsync(cts.Token);
             }
             catch (Exception ex)
             {

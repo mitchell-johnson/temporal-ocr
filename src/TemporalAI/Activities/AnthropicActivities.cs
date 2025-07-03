@@ -119,7 +119,7 @@ namespace TemporalAI.Activities
                 messages.Add(new
                 {
                     role = "user",
-                    content = messageContent.Count == 1 ? messageContent[0] : messageContent
+                    content = messageContent
                 });
 
                 // Apply custom parameters
@@ -163,21 +163,21 @@ namespace TemporalAI.Activities
 
                 // Calculate total tokens (Anthropic provides input and output tokens)
                 int? totalTokens = null;
-                if (result.usage != null)
+                if (result?.usage != null)
                 {
                     totalTokens = (int?)result.usage.input_tokens + (int?)result.usage.output_tokens;
                 }
 
                 return new AIResponse
                 {
-                    Content = result.content[0].text,
+                    Content = result?.content?[0]?.text?.ToString() ?? "",
                     ModelUsed = model,
                     TokensUsed = totalTokens,
                     Metadata = new Dictionary<string, object>
                     {
-                        ["stop_reason"] = result.stop_reason?.ToString() ?? "unknown",
-                        ["input_tokens"] = (int?)result.usage?.input_tokens ?? 0,
-                        ["output_tokens"] = (int?)result.usage?.output_tokens ?? 0
+                        ["stop_reason"] = result?.stop_reason?.ToString() ?? "unknown",
+                        ["input_tokens"] = (int?)result?.usage?.input_tokens ?? 0,
+                        ["output_tokens"] = (int?)result?.usage?.output_tokens ?? 0
                     }
                 };
             }

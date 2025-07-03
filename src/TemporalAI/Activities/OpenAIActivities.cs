@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using OpenAI;
 using OpenAI.Chat;
-using OpenAI.Images;
 using TemporalAI.Models;
 using Temporalio.Activities;
 
@@ -60,14 +59,8 @@ namespace TemporalAI.Activities
                         var imageUrl = $"data:{mimeType};base64,{base64Image}";
                         
                         messages.Add(new UserChatMessage(
-                            new List<ChatMessageContentPart>
-                            {
-                                ChatMessageContentPart.CreateTextMessageContentPart(request.Prompt),
-                                ChatMessageContentPart.CreateImageMessageContentPart(
-                                    new Uri(imageUrl),
-                                    ImageChatMessageContentPartDetail.Auto
-                                )
-                            }
+                            ChatMessageContentPart.CreateTextPart(request.Prompt),
+                            ChatMessageContentPart.CreateImagePart(new Uri(imageUrl))
                         ));
                         model = "gpt-4-vision-preview"; // Use vision model for images
                     }
@@ -108,7 +101,7 @@ namespace TemporalAI.Activities
                 var options = new ChatCompletionOptions
                 {
                     Temperature = temperature,
-                    MaxTokens = maxTokens
+                    MaxOutputTokenCount = maxTokens
                 };
 
                 // Make API call
@@ -120,12 +113,12 @@ namespace TemporalAI.Activities
                 {
                     Content = completion.Content[0].Text,
                     ModelUsed = model,
-                    TokensUsed = completion.Usage?.TotalTokens,
+                    TokensUsed = completion.Usage?.TotalTokenCount,
                     Metadata = new Dictionary<string, object>
                     {
                         ["finish_reason"] = completion.FinishReason.ToString(),
-                        ["prompt_tokens"] = completion.Usage?.InputTokens ?? 0,
-                        ["completion_tokens"] = completion.Usage?.OutputTokens ?? 0
+                        ["prompt_tokens"] = completion.Usage?.InputTokenCount ?? 0,
+                        ["completion_tokens"] = completion.Usage?.OutputTokenCount ?? 0
                     }
                 };
             }
