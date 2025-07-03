@@ -193,14 +193,7 @@ public class AISpecialistWorkflow
 └── docker-compose.csharp.yml      # Docker compose for C# version
 ```
 
-## Key Differences from Python Version
 
-1. **Strong Typing**: All models use C# records with required properties
-2. **Async/Await**: Native async support throughout
-3. **Dependency Injection**: Built-in DI container for services
-4. **Activity Interfaces**: Strongly-typed interfaces for each AI provider
-5. **Structured Logging**: Uses Microsoft.Extensions.Logging
-6. **NuGet Packages**: Modern package management with .csproj
 
 ## Extending the System
 
