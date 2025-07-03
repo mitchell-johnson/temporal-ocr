@@ -2,16 +2,6 @@
 
 This project provides a generic AI temporal workflow environment with dedicated workers for Google Gemini, OpenAI, and Anthropic Claude. It demonstrates how to build robust, distributed AI workflows using Temporal with .NET 8 and C#.
 
-**Note: This project has been fully converted from Python to C#. All Python code has been removed. The Python documentation is preserved in AI_TEMPORAL_WORKFLOW_PYTHON_README.md for reference.**
-
-## Key Changes from Python Version
-
-- All code converted to C# with .NET 8
-- Strong typing with C# records and interfaces
-- Native async/await support throughout
-- Docker configuration updated for .NET runtime
-- Helper script `run.sh` for easy execution
-
 ## Features
 
 - **3 AI Workers**: Dedicated workers for Google Gemini, OpenAI, and Anthropic Claude
